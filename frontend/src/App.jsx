@@ -3,6 +3,7 @@ import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Select } from 'antd'; 
+import Webcam from 'react-webcam';
 import {
   Layout,
   ConfigProvider,
@@ -21,6 +22,8 @@ import {
   BulbFilled,
   GithubOutlined,
   LinkedinOutlined,
+  CameraOutlined,
+  UploadOutlined,
 } from "@ant-design/icons";
 
 import ImageUpload from "./components/ImageUpload";
@@ -39,15 +42,22 @@ function App() {
     const savedMode = localStorage.getItem("darkMode");
     return savedMode ? JSON.parse(savedMode) : false;
   });
+  const [cameraMode, setCameraMode] = useState(false);
+  const [capturedImagePreview, setCapturedImagePreview] = useState(null);
+  const [garmentCameraMode, setGarmentCameraMode] = useState(false);
+  const [capturedGarmentPreview, setCapturedGarmentPreview] = useState(null);
 
-  const [modelType, setModelType] = useState("");
-  const [gender, setGender] = useState("");
-  const [garmentType, setGarmentType] = useState("");
-  const [style, setStyle] = useState("");
+  const [modelType, setModelType] = useState("full");
+  const [gender, setGender] = useState("male");
+  const [garmentType, setGarmentType] = useState("shalwar_kameez");
+  const [style, setStyle] = useState("traditional");
+  const [background, setBackground] = useState("studio");
 
   const { Option } = Select;
 
   const resultRef = useRef(null);
+  const webcamRef = useRef(null);
+  const garmentWebcamRef = useRef(null);
 
   const { defaultAlgorithm, darkAlgorithm } = theme;
 
@@ -79,6 +89,7 @@ function App() {
     formData.append("gender", gender || "");
     formData.append("garment_type", garmentType || "");
     formData.append("style", style || "");
+    formData.append("background", background || "");
 
     try {
       const response = await axios.post("http://localhost:8000/api/try-on", formData, {
@@ -104,6 +115,72 @@ function App() {
     }
   };
 
+  const capturePhoto = () => {
+    const imageSrc = webcamRef.current.getScreenshot();
+    if (imageSrc) {
+      // Set the preview URL immediately
+      setCapturedImagePreview(imageSrc);
+      
+      // Convert base64 to Blob
+      fetch(imageSrc)
+        .then(res => res.blob())
+        .then(blob => {
+          // Create a File object from the Blob
+          const file = new File([blob], "camera-capture.jpg", { type: "image/jpeg" });
+          setPersonImage(file);
+          setCameraMode(false);
+          toast.success("Photo captured successfully!");
+        })
+        .catch(err => {
+          toast.error("Failed to process the captured image");
+          console.error(err);
+        });
+    }
+  };
+
+  const captureGarmentPhoto = () => {
+    const imageSrc = garmentWebcamRef.current.getScreenshot();
+    if (imageSrc) {
+      // Set the preview URL immediately
+      setCapturedGarmentPreview(imageSrc);
+      
+      // Convert base64 to Blob
+      fetch(imageSrc)
+        .then(res => res.blob())
+        .then(blob => {
+          // Create a File object from the Blob
+          const file = new File([blob], "garment-capture.jpg", { type: "image/jpeg" });
+          setClothImage(file);
+          setGarmentCameraMode(false);
+          toast.success("Garment photo captured successfully!");
+        })
+        .catch(err => {
+          toast.error("Failed to process the captured garment image");
+          console.error(err);
+        });
+    }
+  };
+
+  // Clear captured preview when switching to upload mode
+  useEffect(() => {
+    if (!cameraMode) {
+      // Don't clear the preview if we have just captured an image
+      if (!capturedImagePreview) {
+        setCapturedImagePreview(null);
+      }
+    }
+  }, [cameraMode]);
+  
+  // Clear captured garment preview when switching to upload mode
+  useEffect(() => {
+    if (!garmentCameraMode) {
+      // Don't clear the preview if we have just captured an image
+      if (!capturedGarmentPreview) {
+        setCapturedGarmentPreview(null);
+      }
+    }
+  }, [garmentCameraMode]);
+  
   const bgColor = isDarkMode ? "#0f0f0f" : "#f9fafb";
   const cardColor = isDarkMode ? "#1c1c1c" : "#ffffff";
   const textColor = isDarkMode ? "#e4e4e4" : "#111827";
@@ -160,18 +237,116 @@ function App() {
                       borderRadius: 12,
                     }}
                   >
-                    <Title
-                      level={4}
-                      style={{ color: textColor, marginBottom: 16 }}
-                    >
-                      Model Image
-                    </Title>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                      <Title
+                        level={4}
+                        style={{ color: textColor, margin: 0 }}
+                      >
+                        Model Image
+                      </Title>
+                      <Space>
+                        <Button 
+                          type={cameraMode ? "default" : "primary"}
+                          icon={<UploadOutlined />}
+                          onClick={() => setCameraMode(false)}
+                        >
+                          Upload
+                        </Button>
+                        <Button
+                          type={cameraMode ? "primary" : "default"}
+                          icon={<CameraOutlined />}
+                          onClick={() => setCameraMode(true)}
+                        >
+                          Camera
+                        </Button>
+                      </Space>
+                    </div>
 
-                    <ImageUpload
-                      label="Upload Model Image"
-                      onImageChange={setPersonImage}
-                      isDarkMode={isDarkMode}
-                    />
+                    {cameraMode ? (
+                      <div style={{ marginBottom: 16 }}>
+                        <Webcam
+                          audio={false}
+                          ref={webcamRef}
+                          screenshotFormat="image/jpeg"
+                          style={{ 
+                            width: '100%', 
+                            borderRadius: 8,
+                            border: `1px solid ${isDarkMode ? '#333' : '#d1d5db'}`
+                          }}
+                        />
+                        <Button
+                          type="primary"
+                          onClick={capturePhoto}
+                          style={{ 
+                            width: '100%', 
+                            marginTop: 8,
+                            height: 40 
+                          }}
+                        >
+                          Capture Photo
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        {capturedImagePreview ? (
+                          <div style={{ marginBottom: 16 }}>
+                            <div style={{ 
+                              position: 'relative',
+                              marginBottom: 8 
+                            }}>
+                              <img 
+                                src={capturedImagePreview} 
+                                alt="Captured"
+                                style={{ 
+                                  width: '100%', 
+                                  borderRadius: 8,
+                                  border: `1px solid ${isDarkMode ? '#333' : '#d1d5db'}`
+                                }}
+                              />
+                              <div style={{ 
+                                position: 'absolute', 
+                                top: 8, 
+                                right: 8 
+                              }}>
+                                <Button 
+                                  type="primary" 
+                                  shape="circle" 
+                                  size="small"
+                                  onClick={() => {
+                                    setCapturedImagePreview(null);
+                                    setPersonImage(null);
+                                  }}
+                                  danger
+                                >
+                                  X
+                                </Button>
+                              </div>
+                            </div>
+                            <Text style={{ color: subText }}>
+                              Captured Image
+                            </Text>
+                            <div style={{ marginTop: 8 }}>
+                              <Button 
+                                type="default"
+                                onClick={() => {
+                                  setCameraMode(true);
+                                  setCapturedImagePreview(null);
+                                }}
+                                style={{ width: '100%' }}
+                              >
+                                Take Another Photo
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <ImageUpload
+                            label="Upload Model Image"
+                            onImageChange={setPersonImage}
+                            isDarkMode={isDarkMode}
+                          />
+                        )}
+                      </>
+                    )}
 
                     <div className="mt-6 space-y-4">
                       {/* Model Type */}
@@ -216,18 +391,116 @@ function App() {
                       borderRadius: 12,
                     }}
                   >
-                    <Title
-                      level={4}
-                      style={{ color: textColor, marginBottom: 16 }}
-                    >
-                      Garment Image
-                    </Title>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                      <Title
+                        level={4}
+                        style={{ color: textColor, margin: 0 }}
+                      >
+                        Garment Image
+                      </Title>
+                      <Space>
+                        <Button 
+                          type={garmentCameraMode ? "default" : "primary"}
+                          icon={<UploadOutlined />}
+                          onClick={() => setGarmentCameraMode(false)}
+                        >
+                          Upload
+                        </Button>
+                        <Button
+                          type={garmentCameraMode ? "primary" : "default"}
+                          icon={<CameraOutlined />}
+                          onClick={() => setGarmentCameraMode(true)}
+                        >
+                          Camera
+                        </Button>
+                      </Space>
+                    </div>
 
-                    <ImageUpload
-                      label="Upload Cloth Image"
-                      onImageChange={setClothImage}
-                      isDarkMode={isDarkMode}
-                    />
+                    {garmentCameraMode ? (
+                      <div style={{ marginBottom: 16 }}>
+                        <Webcam
+                          audio={false}
+                          ref={garmentWebcamRef}
+                          screenshotFormat="image/jpeg"
+                          style={{ 
+                            width: '100%', 
+                            borderRadius: 8,
+                            border: `1px solid ${isDarkMode ? '#333' : '#d1d5db'}`
+                          }}
+                        />
+                        <Button
+                          type="primary"
+                          onClick={captureGarmentPhoto}
+                          style={{ 
+                            width: '100%', 
+                            marginTop: 8,
+                            height: 40 
+                          }}
+                        >
+                          Capture Garment Photo
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        {capturedGarmentPreview ? (
+                          <div style={{ marginBottom: 16 }}>
+                            <div style={{ 
+                              position: 'relative',
+                              marginBottom: 8 
+                            }}>
+                              <img 
+                                src={capturedGarmentPreview} 
+                                alt="Captured Garment"
+                                style={{ 
+                                  width: '100%', 
+                                  borderRadius: 8,
+                                  border: `1px solid ${isDarkMode ? '#333' : '#d1d5db'}`
+                                }}
+                              />
+                              <div style={{ 
+                                position: 'absolute', 
+                                top: 8, 
+                                right: 8 
+                              }}>
+                                <Button 
+                                  type="primary" 
+                                  shape="circle" 
+                                  size="small"
+                                  onClick={() => {
+                                    setCapturedGarmentPreview(null);
+                                    setClothImage(null);
+                                  }}
+                                  danger
+                                >
+                                  X
+                                </Button>
+                              </div>
+                            </div>
+                            <Text style={{ color: subText }}>
+                              Captured Garment Image
+                            </Text>
+                            <div style={{ marginTop: 8 }}>
+                              <Button 
+                                type="default"
+                                onClick={() => {
+                                  setGarmentCameraMode(true);
+                                  setCapturedGarmentPreview(null);
+                                }}
+                                style={{ width: '100%' }}
+                              >
+                                Take Another Garment Photo
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <ImageUpload
+                            label="Upload Cloth Image"
+                            onImageChange={setClothImage}
+                            isDarkMode={isDarkMode}
+                          />
+                        )}
+                      </>
+                    )}
 
                     <div className="mt-6 space-y-4">
                       {/* Garment Type */}
@@ -244,6 +517,7 @@ function App() {
                           <Option value="jacket">Jacket</Option>
                           <Option value="dress">Dress</Option>
                           <Option value="tshirt">T-shirt</Option>
+                          <Option value="shalwar_kameez">Shalwar Kameez</Option>
                         </Select>
                       </div>
 
@@ -261,6 +535,24 @@ function App() {
                           <Option value="streetwear">Streetwear</Option>
                           <Option value="traditional">Traditional</Option>
                           <Option value="sports">Sportswear</Option>
+                        </Select>
+                      </div>
+                      
+                      {/* Background */}
+                      <div>
+                        <Text style={{ color: subText }}>Background</Text>
+                        <Select
+                          placeholder="Select background"
+                          style={{ width: "100%", marginTop: 4 }}
+                          value={background}
+                          onChange={setBackground}
+                        >
+                          <Option value="studio">Studio</Option>
+                          <Option value="nature">Nature</Option>
+                          <Option value="city">City</Option>
+                          <Option value="beach">Beach</Option>
+                          <Option value="indoors">Indoors</Option>
+                          <Option value="fashion_runway">Fashion Runway</Option>
                         </Select>
                       </div>
                     </div>

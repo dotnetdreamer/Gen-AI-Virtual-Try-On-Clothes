@@ -27,6 +27,7 @@ async def try_on(
     gender: str = Form(""),
     garment_type: str = Form(""),
     style: str = Form(""),
+    background: str = Form(""),
 ):
     try:
         
@@ -106,7 +107,7 @@ async def try_on(
             }},
             "background_replacement": {{
                 "priority": "CRITICAL",
-                "instruction": "Generate a **COMPLETELY NEW and DIFFERENT** background that is distinct from the original background in 'person_image'. The new background should be photorealistic and contextually plausible for a person/fashion image unless otherwise specified by 'background_preference'. Ensure the person is seamlessly integrated into this new environment. **NO elements** from the original background should remain visible."
+                "instruction": "Generate a **COMPLETELY NEW and DIFFERENT** background that is distinct from the original background in 'person_image'. The background should be a {background} setting that is photorealistic and contextually plausible for a person/fashion image. Ensure the person is seamlessly integrated into this new environment. **NO elements** from the original background should remain visible."
             }},
             "pose_preservation": {{
                 "priority": "HIGH",
@@ -158,6 +159,7 @@ async def try_on(
             - Gender: {gender}
             - Garment Type: {garment_type}
             - Style: {style}
+            - Background: {background}
             - Special Instructions: {instructions}
 
            Return image of try on and a short caption or summary of how the outfit looks and fits. Also include suggestions for improvement.
@@ -168,6 +170,7 @@ async def try_on(
         print(gender)
         print(garment_type)
         print(style)
+        print(background)
         print(instructions)
         
         print(prompt)
